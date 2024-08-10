@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>برنامج إدارة الأصناف</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="text"], input[type="date"], input[type="number"] {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+            max-width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 80%;
+        }
+
+        th, td {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+            font-size: 14px;
+        }
+
+        .red {
+            color: red;
+        }
+
+        .yellow {
+            color: #ffa500;
+        }
+
+        .green {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="container">
+        <h1>الواجهة الرئيسية</h1>
+        <button onclick="showAddProduct()">إضافة الصنف</button>
+        <button onclick="showProducts()">عرض الأصناف</button>
+        <button onclick="showExpiredProducts()">الأصناف المنتهية</button>
+        <button onclick="showSearchDelete()">البحث والحذف</button>
+    </div>
+
+    <div id="add-product" class="container hidden">
+        <h1>إضافة الصنف</h1>
+        <label>اسم الصنف</label><br>
+        <input type="text" id="product-name"><br>
+        <label>رقم الصنف</label><br>
+        <input type="number" id="product-number"><br>
+        <label>تاريخ انتهاء الصنف</label><br>
+        <input type="date" id="expiry-date"><br>
+        <button onclick="submitProduct()">ترحيل البيانات</button>
+        <button onclick="goBack()">العودة</button>
+    </div>
+
+    <div id="view-products" class="container hidden">
+        <h1>عرض الأصناف</h1>
+        <button onclick="goBack()">العودة</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم الصنف</th>
+                    <th>رقم الصنف</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>الأيام المتبقية</th>
+                </tr>
+            </thead>
+            <tbody id="products-list"></tbody>
+        </table>
+    </div>
+
+    <div id="expired-products" class="container hidden">
+        <h1>الأصناف المنتهية</h1>
+        <button onclick="goBack()">العودة</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم الصنف</th>
+                    <th>رقم الصنف</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th><button onclick="deleteExpiredProduct(-1)">حذف</button></th>
+                </tr>
+            </thead>
+            <tbody id="expired-products-list"></tbody>
+        </table>
+    </div>
+
+    <div id="search-delete" class="container hidden">
+        <h1>البحث والحذف</h1>
+        <input type="number" id="search-number" placeholder="أدخل رقم الصنف للبحث">
+        <button onclick="searchProduct()">بحث</button>
+        <button onclick="goBack()">العودة</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>اسم الصنف</th>
+                    <th>رقم الصنف</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>الأيام المتبقية</th>
+                    <th>حذف</th>
+                </tr>
+            </thead>
+            <tbody id="search-results"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let expiredProducts = [];
+
+        function showAddProduct() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('add-product').classList.remove('hidden');
+        }
+
+        function showProducts() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('view-products').classList.remove('hidden');
+            updateProductTable();
+        }
+
+        function showExpiredProducts() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('expired-products').classList.remove('hidden');
+            showExpiredProductTable();
+        }
+
+        function showSearchDelete() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('search-delete').classList.remove('hidden');
+        }
+
+        function submitProduct() {
+            const name = document.getElementById('product-name').value;
+            const number = document.getElementById('product-number').value;
+            const expiry = document.getElementById('expiry-date').value;
+
+            const existingProduct = products.find(product => product.number === number && product.expiry === expiry);
+
+            if (existingProduct) {
+                alert('هذا الصنف موجود من قبل!');
+                return;
+            }
+
+            if (name && number && expiry) {
+                products.push({ name, number, expiry });
+                localStorage.setItem('products', JSON.stringify(products));
+
+                document.getElementById('product-name').value = '';
+                document.getElementById('product-number').value = '';
+                document.getElementById('expiry-date').value = '';
+
+                alert('تم ترحيل البيانات بنجاح!');
+            } else {
+                alert('يرجى ملء جميع الحقول!');
+            }
+        }
+
+        function updateProductTable() {
+            const productList = document.getElementById('products-list');
+            productList.innerHTML = '';
+
+            // فرز الأصناف حسب تاريخ الانتهاء
+            products.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+            products.forEach((product, index) => {
+                const daysRemaining = calculateDaysRemaining(product.expiry);
+                
+                let rowClass = '';
+                if (daysRemaining <= 5) {
+                    rowClass = 'red';
+                } else if (daysRemaining <= 15) {
+                    rowClass = 'yellow';
+                } else if (daysRemaining <= 30) {
+                    rowClass = 'green';
+                }
+
+                if (daysRemaining === 0) {
+                    expiredProducts.push(product);
+                    products.splice(index, 1);
+                } else {
+                    const tr = document.createElement('tr');
+                    tr.className = rowClass;
+                    tr.innerHTML = `
+                        <td>${product.name}</td>
+                        <td>${product.number}</td>
+                        <td>${product.expiry}</td>
+                        <td>${daysRemaining} يوم</td>
+                    `;
+                    productList.appendChild(tr);
+                }
+            });
+
+            localStorage.setItem('products', JSON.stringify(products));
+        }
+
+        function showExpiredProductTable() {
+            const expiredProductList = document.getElementById('expired-products-list');
+            expiredProductList.innerHTML = '';
+
+            expiredProducts.forEach((product, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.number}</td>
+                    <td>${product.expiry}</td>
+                    <td><button onclick="deleteExpiredProduct(${index})">حذف</button></td>
+                `;
+                expiredProductList.appendChild(tr);
+            });
+        }
+
+        function searchProduct() {
+            const searchNumber = document.getElementById('search-number').value;
+            const searchResults = document.getElementById('search-results');
+            searchResults.innerHTML = '';
+
+            const filteredProducts = products.filter(product => product.number === searchNumber);
+
+            filteredProducts.forEach((product, index) => {
+                const daysRemaining = calculateDaysRemaining(product.expiry);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.number}</td>
+                    <td>${product.expiry}</td>
+                    <td>${daysRemaining} يوم</td>
+                    <td><button onclick="deleteSearchedProduct(${index})">حذف</button></td>
+                `;
+                searchResults.appendChild(tr);
+            });
+        }
+
+        function deleteSearchedProduct(index) {
+            if (confirm('هل أنت متأكد أنك تريد حذف هذا الصنف؟')) {
+                const searchNumber = document.getElementById('search-number').value;
+                products = products.filter((product, i) => !(product.number === searchNumber && i === index));
+                localStorage.setItem('products', JSON.stringify(products));
+                searchProduct();
+                updateProductTable();
+            }
+        }
+
+        function deleteExpiredProduct(index) {
+            if (confirm('هل أنت متأكد أنك تريد حذف هذا الصنف؟')) {
+                expiredProducts.splice(index, 1);
+                localStorage.setItem('products', JSON.stringify(products));
+                showExpiredProductTable();
+            }
+        }
+
+        function calculateDaysRemaining(expiryDate) {
+            const today = new Date();
+            const expiry = new Date(expiryDate);
+            const timeDiff = expiry.getTime() - today.getTime();
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            return daysRemaining > 0 ? daysRemaining : 0;
+        }
+
+        function goBack() {
+            document.getElementById('add-product').classList.add('hidden');
+            document.getElementById('view-products').classList.add('hidden');
+            document.getElementById('expired-products').classList.add('hidden');
+            document.getElementById('search-delete').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+        }
+
+        // تحديث عدد الأيام المتبقية كلما تم تحميل الصفحة
+        updateProductTable();
+    </script>
+
+</body>
+</html>
